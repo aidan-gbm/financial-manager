@@ -1,29 +1,32 @@
 from os import path, listdir
+from re import sub
 import pickle
 import csv
-import re
 
 from prompt import *
+from calc import findMatches
 
 def clean(string:str):
-    return re.sub('[\W]+', '', string.replace(' ', '_'))
+    """Returns filesystem safe string. Not for use with user input."""
+    return sub('[\W]+', '', string.lower().replace(' ', '_'))
 
-def get_key(aliases:dict, value:str):
-    for key, vals in aliases.items():
-        if value in vals:
-            return key
-    return False
+def save_aliases(data_dir:str, aliases:dict):
+    """Saves aliases to disk.
+
+    Pickled object is the aliases dictionary, saved as
+    <data_dir>/aliases.pickle
+    """
+    save_path = path.join(data_dir, 'aliases.pickle')
+    with open(save_path, 'wb') as f:
+        pickle.dump(aliases, f)
+    p_success('Saved aliases')
 
 def load_aliases(data_dir:str):
-    aliases = {}
-    with open(path.join(data_dir, 'aliases.csv'), 'a+') as csv_file:
-        p_info('Loading aliases...')
-        csv_reader = csv.reader(csv_file)
-        for row in csv_reader:
-            if row[0] in aliases:
-                aliases[row[0]].append(row[1])
-            else:
-                aliases[row[0]] = [row[1]]
+    """Loads aliases from disk. Returns dict."""
+    load_path = path.join(data_dir, 'aliases.pickle')
+    with open(load_path, 'rb') as f:
+        aliases = pickle.load(f)
+    p_success('Loaded aliases')
     return aliases
 
 def save_transactions(data_dir:str, account:str, transactions:list):
@@ -56,24 +59,34 @@ def load_transactions(data_dir:str):
 def load_statement(file_path:str, aliases:dict):
     file_path = path.expanduser(file_path)
     if not path.exists(file_path):
-        raise FileNotFoundError(file_path)
-    p_info('Loading statement...')
+        p_error('File does not exist')
+        return ([], aliases)
 
-    alias_values = [x for v in aliases.values() for x in v]
+    p_info('Loading statement...')
     transactions = []
 
     with open(file_path) as csv_file:
         csv_reader = csv.DictReader(csv_file)
         for row in csv_reader:
-            if key := get_key(aliases, row['Description']):
-                name = key
-            else:
-                p_info('No name found for: ' + row['Description'])
-                name = p_prompt('Enter name for transaction: ')
+            item = row['Description']
+            matches = findMatches(item, aliases)
+            if list == type(matches):
+                p_info(f'No name found for "{item}"')
+                opts = [inquirer.List(
+                    'sel',
+                    message='Select business name',
+                    choices=matches + ['New']
+                )]
+                if 'New' == (name := inquirer.prompt(opts)['sel']):
+                    q = [inquirer.Text('name', message='Name of business')]
+                    name = inquirer.prompt(q)['name']
                 if name in aliases.keys():
-                    aliases[name].append(row['Description'])
+                    aliases[name].append(item)
                 else:
-                    aliases[name] = [row['Description']]
+                    aliases[name] = [item]
+            else:
+                name = matches
+                p_info(f'Matched {name} -> "{item}"')
 
             transactions.append({
                 'date': row['Date'],

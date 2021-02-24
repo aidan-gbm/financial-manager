@@ -46,12 +46,7 @@ while ((ans := inquirer.prompt(options)['action']) != 'Exit'):
                 print(f'\t({t["date"]}) {t["name"]}: {t["amount"]}')
 
 # Write Changes
-with open(path.join('data', 'aliases.csv'), 'w') as csv_file:
-    csv_writer = csv.writer(csv_file)
-    for key, vals in aliases.items():
-        for val in vals:
-            csv_writer.writerow([key, val])
-
+fs.save_aliases(data_dir, aliases)
 for name, t_list in transactions.items():
     fs.save_transactions(data_dir, name, t_list)
 
