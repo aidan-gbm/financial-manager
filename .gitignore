@@ -1,5 +1,4 @@
 **.vscode/
 **__pycache__/
-**/*.swp
-data/accounts/*
 data/aliases.csv
+data/*.pickle

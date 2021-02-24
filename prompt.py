@@ -23,6 +23,25 @@ def select_account(accounts, msg):
     ]
     return inquirer.prompt(options)['act']
 
+def select_account_new(accounts:set, msg:str):
+    """Prompts the user to select an account.
+
+    accounts is the list of existing accounts. If the user selects "New"
+    they will be prompted to enter a name for the new account.
+    """
+    options = [
+        inquirer.List('act',
+        message=msg,
+        choices=accounts ^ {'New'})
+    ]
+    if 'New' == (ans := inquirer.prompt(options)['act']):
+        q = [inquirer.Text('name', message='Name of account')]
+        ans = inquirer.prompt(q)['name']
+    if 'New' == ans:
+        p_error('Account name cannot be "New"')
+        return select_account_new(accounts, msg)
+    return ans
+
 def select_file(msg):
     readline.set_completer_delims(' \t\n;')
     readline.parse_and_bind('tab: complete')
